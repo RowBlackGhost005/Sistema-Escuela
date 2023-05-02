@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+
+<html>
+    <head>
+        <title>TODO supply a title</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        <script>
+            
+            let READY_STATE_UNINITIALIZED = 0;
+            let READY_STATE_CONNECTIO_ESTABLISHED = 1;
+            let READY_STATE_REQUEST_RECEIVED = 2;
+            let READY_STATE_PROCESSING_REQUEST = 3;
+            let READY_STATE_RESPONSE_READY = 4;
+            
+            //Configuracion al cargar la pagina
+            window.onload = function(){
+                var btn = document.getElementById("requestReports");
+		btn.onclick = requestReports;
+            };
+            
+            function requestReports(){
+                
+                peticion_http = new XMLHttpRequest();
+                peticion_http.onreadystatechange = getReportResult;
+                
+                if(peticion_http){
+                    peticion_http.open('GET' , 'FetchReports' , true);
+                    peticion_http.send(null);
+                }
+            }
+            
+            function getReportResult(){
+                if(peticion_http.readyState === READY_STATE_RESPONSE_READY){
+                    let respuesta = peticion_http.responseText;
+                    
+                    if(!respuesta.startsWith('{}')){
+                        alert(respuesta);
+                        let reporte = JSON.parse(respuesta);
+                        
+                        let responseField = document.getElementById("response");
+                        let pResponse = document.createElement("p");
+                        pResponse.innerHTML = respuesta;
+                        responseField.appendChild(pResponse);
+                    }
+                }
+            }
+            
+            
+        </script>
+    </head>
+    
+    <body>
+        <h1>Reportes Registro Escolar</h1>
+        
+        <input type="button" value="Enviar" id="requestReports"/>
+        
+        <div id="response">
+            
+            
+        </div>
+    </body>
+</html>
