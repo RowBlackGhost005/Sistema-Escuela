@@ -41,6 +41,7 @@ public class ControlInformacion {
             BufferedReader in = new BufferedReader(
                     new InputStreamReader(connector.getInputStream()));
             String inputLine;
+            
             StringBuffer content = new StringBuffer();
             while ((inputLine = in.readLine()) != null) {
                 content.append(inputLine);
