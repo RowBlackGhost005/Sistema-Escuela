@@ -13,6 +13,8 @@ import javax.ws.rs.core.MediaType;
 import com.rabbitmq.client.*;
 import java.io.IOException;
 import java.util.concurrent.TimeoutException;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.POST;
 import javax.ws.rs.core.Response;
 
 /**
@@ -28,6 +30,12 @@ public class NotificacionesResource {
 
     private final String QUEUE_NAME = "cola_notificaciones";
     private final String EXCHANGE_NAME = "notificaciones";
+    
+    //Colas de regreso.
+    private static final String COLA_REGRESO = "validacion_regreso";
+    private static final String HOST_NAME = "localhost";
+    private static final int PORT_NUMBER = 5672;
+
 
     /**
      * Creates a new instance of NotificacionesResource
@@ -84,5 +92,21 @@ public class NotificacionesResource {
             e.printStackTrace();
             return Response.status(500).entity("Ocurrió un error al consumir la cola").build();
         }
+    }
+
+    @POST
+    @Consumes(MediaType.TEXT_PLAIN)
+    public Response publishMessage(String message) throws IOException, TimeoutException {
+        ConnectionFactory factory = new ConnectionFactory();
+        factory.setHost(HOST_NAME);
+        factory.setPort(PORT_NUMBER);
+        Connection connection = factory.newConnection();
+        Channel channel = connection.createChannel();
+        channel.queueDeclare(COLA_REGRESO, false, false, false, null);
+        channel.basicPublish("", COLA_REGRESO, null, message.getBytes());
+        System.out.println("Sent message '" + message + "' to queue '" + COLA_REGRESO + "'");
+        channel.close();
+        connection.close();
+        return Response.status(Response.Status.OK).entity("La validación fue correcta").build();
     }
 }

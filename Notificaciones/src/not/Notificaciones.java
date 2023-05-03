@@ -12,6 +12,8 @@ import com.rabbitmq.client.*;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.concurrent.TimeoutException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class Notificaciones {
 
@@ -68,8 +70,7 @@ public class Notificaciones {
                 String destinatario = properties.getHeaders().get("destinatario").toString();
                 String origen = properties.getHeaders().get("origen").toString();
 
-               // String origen = (String) properties.getHeaders().get("origen");
-
+                // String origen = (String) properties.getHeaders().get("origen");
                 enviarNotificacion(mensajeRecibido, destinatario, origen);
             }
         };
@@ -83,50 +84,13 @@ public class Notificaciones {
         }
     }
 
-    public void recibirNotificacion() {
-        // Recibir confirmación de la tarea validada
+    public void consumirMensajes() {
         ConnectionFactory factory = new ConnectionFactory();
         factory.setHost("localhost");
         try (Connection connection = factory.newConnection(); Channel channel = connection.createChannel()) {
 
-            String ColaRegreso = "cola_validacion_tareas_respuesta";
-            // Declarar exchange y cola
-            channel.exchangeDeclare(EXCHANGE_NAME, "direct");
-            channel.queueDeclare(ColaRegreso, true, false, false, null); // cambio de nombre de la cola
-            channel.queueBind(ColaRegreso, EXCHANGE_NAME, "");
-
-            // Crear consumer y procesar mensajes
-            Consumer consumer = new DefaultConsumer(channel) {
-                @Override
-                public void handleDelivery(String consumerTag, Envelope envelope,
-                        AMQP.BasicProperties properties, byte[] body) throws UnsupportedEncodingException {
-                    String mensaje = new String(body, "UTF-8");
-                    System.out.println("Tarea validada: " + mensaje);
-
-                    //Enviar notificación de proceso exitoso
-                    enviarNotificacionValidacionExitosa("Proceso de tarea validada exitosamente.", "cola_notificaciones_tareas");
-                }
-            };
-            channel.basicConsume(ColaRegreso, true, consumer);
-
-        } catch (Exception e) {
-            System.out.print("aquí falla");
-            e.printStackTrace();
-        }
-    }
-
-    public void enviarNotificacionValidacionExitosa(String mensajeNotificacion, String colaNotificaciones) {
-        // Escuchar confirmación de la tarea validada
-        ConnectionFactory factory = new ConnectionFactory();
-        factory.setHost("localhost");
-        try (Connection connection = factory.newConnection(); Channel channel = connection.createChannel()) {
-
-            String colaRegreso = "cola_validacion_tareas_confirmacion";
-
-            // Declarar exchange y cola
-            channel.exchangeDeclare(EXCHANGE_NAME, "direct");
-            channel.queueDeclare(colaRegreso, true, false, false, null);
-            channel.queueBind(colaRegreso, EXCHANGE_NAME, "");
+            String ColaMensaje = "validacion_regreso"; // nombre de la cola a consumir
+            channel.queueDeclare(ColaMensaje, false, false, false, null);
 
             // Crear consumer y procesar mensajes
             Consumer consumer = new DefaultConsumer(channel) {
@@ -134,55 +98,31 @@ public class Notificaciones {
                 public void handleDelivery(String consumerTag, Envelope envelope,
                         AMQP.BasicProperties properties, byte[] body) throws UnsupportedEncodingException, IOException {
                     String mensaje = new String(body, "UTF-8");
-                    if (mensaje.contains("\"aprobada\":true")) {
-                        // La tarea ha sido validada correctamente, enviar notificación
-                        try {
-                            channel.basicPublish(EXCHANGE_NAME, "", null, mensajeNotificacion.getBytes());
-                            System.out.println("Mensaje enviado: " + mensajeNotificacion);
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
+                    System.out.println("Mensaje recibido: " + mensaje);
+
+                    try {
+                        publicarMensaje("validacion_correcta_regreso", mensaje);
+                    } catch (TimeoutException ex) {
+                        Logger.getLogger(Notificaciones.class.getName()).log(Level.SEVERE, null, ex);
                     }
+
                 }
             };
-            channel.basicConsume(colaRegreso, true, consumer);
-
-            // Enviar mensaje de confirmación de tarea validada
-            String mensajeConfirmacion = "{\"idTarea\":\"123\",\"aprobada\":true}";
-            channel.basicPublish(EXCHANGE_NAME, "validacion", null, mensajeConfirmacion.getBytes());
-            System.out.println("Mensaje enviado: " + mensajeConfirmacion);
+            channel.basicConsume(ColaMensaje, true, consumer);
 
         } catch (Exception e) {
-            // Manejar excepción
+            System.out.print("Error al consumir mensajes");
             e.printStackTrace();
         }
     }
 
-    public void recibirNotificacionValidacionExitosa(String colaNotificaciones) {
-        // Escuchar notificaciones de validación exitosa
+    public void publicarMensaje(String cola, String mensaje) throws IOException, TimeoutException {
         ConnectionFactory factory = new ConnectionFactory();
         factory.setHost("localhost");
         try (Connection connection = factory.newConnection(); Channel channel = connection.createChannel()) {
-
-            // Declarar exchange y cola
-            channel.exchangeDeclare(EXCHANGE_NAME, "direct");
-            channel.queueDeclare(colaNotificaciones, true, false, false, null);
-            channel.queueBind(colaNotificaciones, EXCHANGE_NAME, "");
-
-            // Crear consumer y procesar mensajes
-            Consumer consumer = new DefaultConsumer(channel) {
-                @Override
-                public void handleDelivery(String consumerTag, Envelope envelope,
-                        AMQP.BasicProperties properties, byte[] body) throws UnsupportedEncodingException, IOException {
-                    String mensaje = new String(body, "UTF-8");
-                    System.out.println("Notificación recibida: " + mensaje);
-                }
-            };
-            channel.basicConsume(colaNotificaciones, true, consumer);
-
-        } catch (Exception e) {
-            // Manejar excepción
-            e.printStackTrace();
+            channel.queueDeclare(cola, false, false, false, null);
+            channel.basicPublish("", cola, null, mensaje.getBytes("UTF-8"));
+            System.out.println("Mensaje publicado en la cola '" + cola + "': " + mensaje);
         }
     }
 }

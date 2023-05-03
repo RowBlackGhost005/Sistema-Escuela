@@ -7,10 +7,12 @@ package validacion;
 import com.rabbitmq.client.AMQP;
 import java.util.ArrayList;
 import java.util.List;
-import not.Notificaciones;
 import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.Consumer;
+import com.rabbitmq.client.DefaultConsumer;
+import com.rabbitmq.client.Envelope;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -25,6 +27,14 @@ public class ValidacionTareas {
     private List<String> tareasPendientes = new ArrayList<>();
 
     public ValidacionTareas() {
+    }
+    
+    public void setTareasPendientes(List<String> tareasPendientes) {
+        this.tareasPendientes = tareasPendientes;
+    }
+
+    public List<String> getTareasPendientes() {
+        return tareasPendientes;
     }
 
     public void agregarTareaPendiente(String tarea, String destinatario, String remitente) throws IOException, TimeoutException {
@@ -60,12 +70,54 @@ public class ValidacionTareas {
 
     }
 
-    public void tareaValidada(String tarea) {
-        tareasPendientes.remove(tarea);
+   public void tareaValidada(String tarea) {
+        List<String> tareasPendientes = getTareasPendientes();
+        tareasPendientes.removeIf(t -> t.equals(tarea));
+        setTareasPendientes(tareasPendientes);
+        System.out.println("La tarea '" + tarea + "' ha sido eliminada correctamente.");
     }
 
     // Este método se llama cuando se recibe una tarea a través de la aplicación
-    public void recibirTarea(String tarea,String destinatario, String remitente) throws IOException, TimeoutException {
+    public void recibirTarea(String tarea, String destinatario, String remitente) throws IOException, TimeoutException {
         agregarTareaPendiente(tarea, destinatario, remitente);
     }
+
+    // Se cosume la cola que regresa las tareas que ya están validadas. 
+    public void consumirMensajes() {
+        String nombreCola = "validacion_correcta_regreso";
+        ConnectionFactory factory = new ConnectionFactory();
+        factory.setHost("localhost");
+        try (Connection connection = factory.newConnection(); Channel channel = connection.createChannel()) {
+            channel.queueDeclare(nombreCola, false, false, false, null); // se declara la cola
+            channel.basicQos(1); // se procesa un solo mensaje a la vez
+
+            System.out.println("Esperando mensajes...");
+
+            // Crear un objeto Consumer para recibir y procesar los mensajes
+            Consumer consumer = new DefaultConsumer(channel) {
+                @Override
+                public void handleDelivery(String consumerTag, Envelope envelope,
+                        AMQP.BasicProperties properties, byte[] body) throws IOException {
+                    String mensaje = new String(body, "UTF-8");
+                    System.out.println("Mensaje recibido: " + mensaje);
+
+                    tareaValidada(mensaje);
+                    // confirmar recepción del mensaje para que sea eliminado de la cola
+                    channel.basicAck(envelope.getDeliveryTag(), false);
+                }
+            };
+
+            // Iniciar el consumo de mensajes de la cola
+            channel.basicConsume(nombreCola, false, consumer);
+
+            // Esperar a que se cierre la conexión
+            while (connection.isOpen()) {
+                Thread.sleep(100);
+            }
+        } catch (Exception e) {
+            // Manejar excepción
+
+        }
+    }
+
 }
