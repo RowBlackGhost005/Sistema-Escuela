@@ -16,8 +16,8 @@ import moodleConnection.MoodleDAO;
  *
  * @author lamar
  */
-@Path("MoodleMaestros")
-public class MoodleMaestrosResource {
+@Path("MoodleAlumnos")
+public class MoodleAlumnosResource {
 
     @Context
     private UriInfo context;
@@ -25,24 +25,24 @@ public class MoodleMaestrosResource {
     MoodleDAO moodleDAO = new MoodleDAO();
 
     /**
-     * Creates a new instance of MoodleMaestrosResource
+     * Creates a new instance of MoodleAlumnosResource
      */
-    public MoodleMaestrosResource() {
+    public MoodleAlumnosResource() {
     }
 
     /**
-     * Retrieves representation of an instance of restAPIs.MoodleMaestrosResource
+     * Retrieves representation of an instance of restAPIs.MoodleAlumnosResource
      * @return an instance of java.lang.String
      */
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public Response consultarMaestro() {
+    public Response getJson() {
         //TODO return proper representation object
-        return Response.status(Response.Status.OK).entity(moodleDAO.getReporteMaestro(0)).build();
+        return Response.status(Response.Status.OK).entity(moodleDAO.getCalificacionesAlumno(0)).build();
     }
 
     /**
-     * PUT method for updating or creating an instance of MoodleMaestrosResource
+     * PUT method for updating or creating an instance of MoodleAlumnosResource
      * @param content representation for the resource
      */
     @PUT
