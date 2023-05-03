@@ -1,7 +1,11 @@
 package controlInformacion;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
 import java.net.URI;
+import java.net.URL;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.websocket.ContainerProvider;
@@ -15,7 +19,7 @@ public class ControlInformacion {
 
     public static void main(String[] args) {
         try {
-            System.out.println("Enter to send a report.");
+            System.out.println("Generando reportes . . .");
             
             WebSocketContainer container=null;//
             Session session=null;
@@ -26,7 +30,26 @@ public class ControlInformacion {
             session=container.connectToServer(WSEndpoint.class,            
                     URI.create("ws://localhost:8080/ReportesRegistroEscolar/reportsEndpoint"));
             
-            session.getBasicRemote().sendText("{\"id\":\"1\",\"maestro\":\"Juan\",\"calificaciones\":\"5/20\"}");
+            //Conectando al acceso a datos moodle
+            URL url = new URL("http://localhost:8080/AccesoDatosMoodle/webresources/moodleMaestros");
+            HttpURLConnection connector = (HttpURLConnection) url.openConnection();
+            connector.setRequestMethod("GET");
+            connector.setRequestProperty("Content-Type", "application/json");
+            connector.setConnectTimeout(5000);
+            connector.setReadTimeout(5000);
+            
+            BufferedReader in = new BufferedReader(
+                    new InputStreamReader(connector.getInputStream()));
+            String inputLine;
+            StringBuffer content = new StringBuffer();
+            while ((inputLine = in.readLine()) != null) {
+                content.append(inputLine);
+            }
+            in.close();
+            
+            connector.disconnect();
+            
+            session.getBasicRemote().sendText(content.toString());
             
         } catch (DeploymentException ex) {
             Logger.getLogger(ControlInformacion.class.getName()).log(Level.SEVERE, null, ex);

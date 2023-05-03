@@ -16,7 +16,7 @@ public class WSReports {
     public void onMessage(String received, Session sesion){
         Reports reports = new Reports();
         
-        reports.addReport("{\"id\":\"1\",\"maestro\":\"Juan\",\"calificaciones\":\"5/20\"}");
+        reports.addReport(received);
     }
     
 }
