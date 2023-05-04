@@ -52,7 +52,7 @@ public class NotificacionesResource {
     
     @GET
     @Path("/recibir/{cola}")
-    public String recibir(@PathParam("cola")String cola) throws IOException, TimeoutException, ExecutionException{
+    public String recibir(@PathParam("cola")String cola) throws IOException, TimeoutException{
         Receptor receptor = new Receptor();
         return receptor.recibirMensaje(cola);
     }

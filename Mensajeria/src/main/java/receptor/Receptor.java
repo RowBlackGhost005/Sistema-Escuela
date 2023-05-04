@@ -31,7 +31,7 @@ public class Receptor {
     public Receptor() {
     }
 
-    public String recibirMensaje(String nombreCola) throws IOException, TimeoutException, ExecutionException {
+    public String recibirMensaje(String nombreCola) throws IOException, TimeoutException {
         ConnectionFactory factory = new ConnectionFactory();
         factory.setHost("localhost");
         Connection connection = factory.newConnection();
