@@ -11,9 +11,11 @@ import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.core.MediaType;
 import com.rabbitmq.client.*;
+import entidades.Notificaciones;
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
+import javax.json.JsonObject;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.POST;
 import javax.ws.rs.PathParam;
@@ -65,6 +67,7 @@ public class NotificacionesResource {
         return null;
     }
 
+    //Muestra notificaciones
     @GET
     @Path("/consumircola")
     @Produces(MediaType.TEXT_PLAIN)
@@ -117,7 +120,7 @@ public class NotificacionesResource {
 
     @POST
     @Consumes(MediaType.TEXT_PLAIN)
-    public Response publishMessage(String message) throws IOException, TimeoutException {
+    public Response regresaValidacion(String message) throws IOException, TimeoutException {
         ConnectionFactory factory = new ConnectionFactory();
         factory.setHost(HOST_NAME);
         factory.setPort(PORT_NUMBER);
@@ -130,4 +133,23 @@ public class NotificacionesResource {
         connection.close();
         return Response.status(Response.Status.OK).entity("La validación fue correcta").build();
     }
+
+    @POST
+    @Path("/notificacion")
+    @Consumes(MediaType.TEXT_PLAIN)
+    public Response enviarNotificacion(String texto) {
+        String[] partes = texto.split(",");
+        String notificacion = partes[0];
+        String destinatario = partes[1];
+        String remitente = partes[2];
+
+        Notificaciones notificaciones = new Notificaciones();
+        try {
+            notificaciones.enviarNotificacion(notificacion, destinatario, remitente);
+            return Response.ok("Se ha enviado la notificacion").build();
+        } catch (IOException | TimeoutException e) {
+            return Response.serverError().build();
+    }
+}
+
 }
