@@ -17,6 +17,11 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
+import javax.ws.rs.client.Client;
+import javax.ws.rs.client.ClientBuilder;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+import org.json.JSONObject;
 
 /**
  *
@@ -70,7 +75,7 @@ public class ValidacionTareas {
 
     }
 
-   public void tareaValidada(String tarea) {
+    public void tareaValidada(String tarea) {
         List<String> tareasPendientes = getTareasPendientes();
         tareasPendientes.removeIf(t -> t.equals(tarea));
         setTareasPendientes(tareasPendientes);
@@ -78,8 +83,29 @@ public class ValidacionTareas {
     }
 
     // Este método se llama cuando se recibe una tarea a través de la aplicación
-    public void recibirTarea(String tarea, String destinatario, String remitente) throws IOException, TimeoutException {
-        agregarTareaPendiente(tarea, destinatario, remitente);
+    public void recibirTareaDesdeAPI(String destinatario, String remitente) throws IOException, TimeoutException {
+        // Construir el cliente de Jersey
+        Client client = ClientBuilder.newClient();
+
+        // Hacer una solicitud HTTP GET a la API
+        Response response = client.target("http://localhost:8080/AccesoDatosMoodle/webresources/MoodleTareas")
+                .request(MediaType.APPLICATION_JSON)
+                .get();
+
+        // Extraer el cuerpo de la respuesta como una cadena JSON
+        String responseBody = response.readEntity(String.class);
+
+        // Extraer el mensaje del JSON
+        JSONObject json = new JSONObject(responseBody);
+        String tarea = json.getString("titulo");
+
+        // Llamar al método recibirTarea con el mensaje extraído del JSON
+        agregarTareaPendiente(tarea, "Maria", "Juan");
+
+        System.out.println();
+
+        // Cerrar el cliente de Jersey
+        client.close();
     }
 
     // Se cosume la cola que regresa las tareas que ya están validadas. 
