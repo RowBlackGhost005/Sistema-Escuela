@@ -8,9 +8,9 @@ import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.DeliverCallback;
-import com.rabbitmq.client.Delivery;
 import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
@@ -51,9 +51,9 @@ public class Receptor {
         });
 
         try {
-            return completableFuture.get();
-        } catch (InterruptedException | ExecutionException e) {
-            throw new RuntimeException("Error al recibir mensaje de la cola " + nombreCola, e);
+            return completableFuture.join();
+        } catch (CompletionException e) {
+            throw new RuntimeException("Error al recibir mensaje de la cola " + nombreCola, e.getCause());
         }
     }
 
