@@ -30,6 +30,7 @@ import org.json.JSONObject;
 public class ValidacionTareas {
 
     private List<String> tareasPendientes = new ArrayList<>();
+    private Map<String, String> tareasValidadas = new HashMap<>();
 
     public ValidacionTareas() {
     }
@@ -42,10 +43,15 @@ public class ValidacionTareas {
         return tareasPendientes;
     }
 
-    public void agregarTareaPendiente(String tarea, String destinatario, String remitente) throws IOException, TimeoutException {
+    public Map<String, String> getTareasValidadas() {
+        return tareasValidadas;
+    }
 
-        //P A R T E     D O S
-        tareasPendientes.add(tarea);
+    public void setTareasValidadas(Map<String, String> tareasValidadas) {
+        this.tareasValidadas = tareasValidadas;
+    }
+
+    public void agregarTareaPendiente(String tarea, String destinatario) throws IOException, TimeoutException {
 
         // Crear una conexión y un canal a RabbitMQ
         ConnectionFactory factory = new ConnectionFactory();
@@ -56,7 +62,6 @@ public class ValidacionTareas {
         // Crear los headers
         Map<String, Object> headers = new HashMap<>();
         headers.put("destinatario", destinatario);
-        headers.put("origen", remitente);
 
         // Crear la cola si no existe
         String cola = "envio_modulo_notificaciones";
@@ -76,14 +81,24 @@ public class ValidacionTareas {
     }
 
     public void tareaValidada(String tarea) {
-        List<String> tareasPendientes = getTareasPendientes();
-        tareasPendientes.removeIf(t -> t.equals(tarea));
-        setTareasPendientes(tareasPendientes);
-        System.out.println("La tarea '" + tarea + "' ha sido eliminada correctamente.");
+        if (tareasPendientes.contains(tarea)) {
+            tareasPendientes.remove(tarea);
+            System.out.println("La tarea '" + tarea + "' ha sido eliminada correctamente.");
+        }
+    }
+    
+    public void validarTarea(String tarea) {
+        tareasPendientes.add("Reporte Investigacion");
+        if (tareasPendientes.contains(tarea)) {
+            tareasValidadas.put(tarea, "Maria");
+            tareaValidada(tarea);
+        } else {
+            System.out.println("La tarea '" + tarea + "' no está pendiente para validación.");
+        }
     }
 
     // Este método se llama cuando se recibe una tarea a través de la aplicación
-    public void recibirTareaDesdeAPI(String destinatario, String remitente) throws IOException, TimeoutException {
+    public void recibirTareaDesdeAPI() throws IOException, TimeoutException {
         // Construir el cliente de Jersey
         Client client = ClientBuilder.newClient();
 
@@ -99,8 +114,9 @@ public class ValidacionTareas {
         JSONObject json = new JSONObject(responseBody);
         String tarea = json.getString("titulo");
 
+        tareasPendientes.add(tarea);
         // Llamar al método recibirTarea con el mensaje extraído del JSON
-        agregarTareaPendiente(tarea, "Maria", "Juan");
+        agregarTareaPendiente(tarea, "Maria");
 
         System.out.println();
 
@@ -108,41 +124,34 @@ public class ValidacionTareas {
         client.close();
     }
 
-    // Se cosume la cola que regresa las tareas que ya están validadas. 
-    public void consumirMensajes() {
-        String nombreCola = "validacion_correcta_regreso";
+    public void consumirYValidarMensaje() {
         ConnectionFactory factory = new ConnectionFactory();
         factory.setHost("localhost");
+
         try (Connection connection = factory.newConnection(); Channel channel = connection.createChannel()) {
-            channel.queueDeclare(nombreCola, false, false, false, null); // se declara la cola
-            channel.basicQos(1); // se procesa un solo mensaje a la vez
+            String colaRegresoValidacion = "cola_regreso_validacion";
 
-            System.out.println("Esperando mensajes...");
+            // Declarar la cola de regreso de validación
+            channel.queueDeclare(colaRegresoValidacion, false, false, false, null);
 
-            // Crear un objeto Consumer para recibir y procesar los mensajes
+            // Crear consumer y procesar mensajes
             Consumer consumer = new DefaultConsumer(channel) {
                 @Override
                 public void handleDelivery(String consumerTag, Envelope envelope,
                         AMQP.BasicProperties properties, byte[] body) throws IOException {
                     String mensaje = new String(body, "UTF-8");
-                    System.out.println("Mensaje recibido: " + mensaje);
+                    System.out.println("Mensaje recibido desde 'cola_regreso_validacion': " + mensaje);
 
-                    tareaValidada(mensaje);
-                    // confirmar recepción del mensaje para que sea eliminado de la cola
-                    channel.basicAck(envelope.getDeliveryTag(), false);
+                    // Llamar al método validarTarea con el mensaje recibido
+                    validarTarea(mensaje);
                 }
             };
 
-            // Iniciar el consumo de mensajes de la cola
-            channel.basicConsume(nombreCola, false, consumer);
-
-            // Esperar a que se cierre la conexión
-            while (connection.isOpen()) {
-                Thread.sleep(100);
-            }
+            // Comenzar a consumir mensajes de la cola de regreso de validación
+            channel.basicConsume(colaRegresoValidacion, true, consumer);
         } catch (Exception e) {
-            // Manejar excepción
-
+            System.out.print("Error al consumir y validar mensajes");
+            e.printStackTrace();
         }
     }
 

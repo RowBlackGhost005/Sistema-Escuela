@@ -20,7 +20,7 @@ public class Notificaciones {
     private final String EXCHANGE_NAME = "notificaciones";
     private final String QUEUE_NAME = "cola_notificaciones";//Cola tareas Pendientes
 
-    public void enviarNotificacion(String tarea, String destinatario, String origen) {
+    public void enviarNotificacion(String tarea, String destinatario) {
         // P A R T E       D O S
         // Enviar notificación a la aplicación a través de RabbitMQ
         ConnectionFactory factory = new ConnectionFactory();
@@ -35,8 +35,8 @@ public class Notificaciones {
             // Crear headers con información adicional
             AMQP.BasicProperties props = new AMQP.BasicProperties.Builder()
                     .headers(java.util.Map.of(
-                            "destinatario", destinatario,
-                            "origen", origen))
+                            "destinatario", destinatario
+                    ))
                     .build();
 
             // Publicar mensaje en el exchange
@@ -68,10 +68,9 @@ public class Notificaciones {
                 System.out.println("Mensaje recibido de la cola: " + mensajeRecibido);
 
                 String destinatario = properties.getHeaders().get("destinatario").toString();
-                String origen = properties.getHeaders().get("origen").toString();
 
                 // String origen = (String) properties.getHeaders().get("origen");
-                enviarNotificacion(mensajeRecibido, destinatario, origen);
+                enviarNotificacion(mensajeRecibido, destinatario);
             }
         };
 
@@ -84,34 +83,41 @@ public class Notificaciones {
         }
     }
 
-    public void consumirMensajes() {
+    public void consumirYReenviarMensaje() {
         ConnectionFactory factory = new ConnectionFactory();
         factory.setHost("localhost");
-        try (Connection connection = factory.newConnection(); Channel channel = connection.createChannel()) {
 
-            String ColaMensaje = "validacion_regreso"; // nombre de la cola a consumir
-            channel.queueDeclare(ColaMensaje, false, false, false, null);
+        try (Connection connection = factory.newConnection(); Channel channel = connection.createChannel()) {
+            String colaOrigen = "notificacion_desde_app";
+            String colaDestino = "cola_regreso_validacion";
+
+            // Declarar la cola de origen
+            channel.queueDeclare(colaOrigen, false, false, false, null);
+
+            // Declarar la cola de destino
+            channel.queueDeclare(colaDestino, false, false, false, null);
 
             // Crear consumer y procesar mensajes
             Consumer consumer = new DefaultConsumer(channel) {
                 @Override
                 public void handleDelivery(String consumerTag, Envelope envelope,
-                        AMQP.BasicProperties properties, byte[] body) throws UnsupportedEncodingException, IOException {
+                        AMQP.BasicProperties properties, byte[] body) throws IOException {
                     String mensaje = new String(body, "UTF-8");
-                    System.out.println("Mensaje recibido: " + mensaje);
+                    System.out.println("Mensaje recibido desde 'notificacion_desde_app': " + mensaje);
 
+                    // Publicar el mensaje en la cola de destino
                     try {
-                        publicarMensaje("validacion_correcta_regreso", mensaje);
+                        publicarMensaje(colaDestino, mensaje);
                     } catch (TimeoutException ex) {
                         Logger.getLogger(Notificaciones.class.getName()).log(Level.SEVERE, null, ex);
                     }
-
                 }
             };
-            channel.basicConsume(ColaMensaje, true, consumer);
 
+            // Comenzar a consumir mensajes de la cola de origen
+            channel.basicConsume(colaOrigen, true, consumer);
         } catch (Exception e) {
-            System.out.print("Error al consumir mensajes");
+            System.out.print("Error al consumir y reenviar mensajes");
             e.printStackTrace();
         }
     }
@@ -119,10 +125,12 @@ public class Notificaciones {
     public void publicarMensaje(String cola, String mensaje) throws IOException, TimeoutException {
         ConnectionFactory factory = new ConnectionFactory();
         factory.setHost("localhost");
+
         try (Connection connection = factory.newConnection(); Channel channel = connection.createChannel()) {
             channel.queueDeclare(cola, false, false, false, null);
             channel.basicPublish("", cola, null, mensaje.getBytes("UTF-8"));
             System.out.println("Mensaje publicado en la cola '" + cola + "': " + mensaje);
         }
     }
+
 }

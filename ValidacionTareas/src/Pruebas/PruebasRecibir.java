@@ -4,27 +4,20 @@
  */
 package Pruebas;
 
-import java.io.IOException;
-import java.util.concurrent.TimeoutException;
 import validacion.ValidacionTareas;
 
 /**
  *
  * @author Paulina Cortez Alamilla.
  */
-public class Pruebas {
+public class PruebasRecibir {
 
     /**
      * @param args the command line arguments
      */
-    public static void main(String[] args) throws IOException, TimeoutException {
+    public static void main(String[] args) {
         ValidacionTareas vali = new ValidacionTareas();
-        vali.recibirTareaDesdeAPI();
-
-        System.out.println(vali.getTareasPendientes());
-        while (true) {
-
-        }
-
-    }   
+        vali.consumirYValidarMensaje();
+    }
+    
 }

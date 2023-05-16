@@ -6,25 +6,24 @@ package Pruebas;
 
 import java.io.IOException;
 import java.util.concurrent.TimeoutException;
-import validacion.ValidacionTareas;
+import not.Notificaciones;
 
 /**
  *
  * @author Paulina Cortez Alamilla.
  */
-public class Pruebas {
+public class Principal {
 
     /**
      * @param args the command line arguments
      */
     public static void main(String[] args) throws IOException, TimeoutException {
-        ValidacionTareas vali = new ValidacionTareas();
-        vali.recibirTareaDesdeAPI();
+        Notificaciones not = new Notificaciones();
 
-        System.out.println(vali.getTareasPendientes());
-        while (true) {
-
+        while(true){
+            not.comunicacionModulo();
+          //  not.consumirYReenviarMensaje();
         }
-
-    }   
+    }
+    
 }
