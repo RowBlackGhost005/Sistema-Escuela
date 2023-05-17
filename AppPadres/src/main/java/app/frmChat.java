@@ -6,6 +6,7 @@ package app;
 
 import entidad.Mensaje;
 import mensajeria.RabbitMQConsumer;
+import mensajeria.RabbitMQConsumerBajoRendimiento;
 import mensajeria.RabbitMQProducer;
 
 /**
@@ -20,6 +21,8 @@ public class frmChat extends javax.swing.JFrame {
     public frmChat() {
         initComponents();
         Thread consumerThread = new Thread(new RabbitMQConsumer());
+        Thread consumerNotificiaciones = new Thread(new RabbitMQConsumerBajoRendimiento());
+        consumerNotificiaciones.start();
         consumerThread.start();
         labelUsuario.setText(frmInicio.jTextField1.getText());
         textAreaChat.setEditable(false);
@@ -166,4 +169,5 @@ public class frmChat extends javax.swing.JFrame {
     private javax.swing.JTextArea textAreaMensaje;
     public static javax.swing.JTextArea textAreaNotificaciones;
     // End of variables declaration//GEN-END:variables
+
 }
