@@ -6,6 +6,8 @@ package mensajeria;
 
 import app.frmChat;
 import com.rabbitmq.client.AMQP;
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.Consumer;
 import com.rabbitmq.client.DefaultConsumer;
@@ -15,57 +17,56 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.util.List;
+import java.util.concurrent.TimeoutException;
 
 /**
  *
  * @author jvale
  */
 public class RabbitMQConsumerBajoRendimiento implements Runnable {
-    private final static String QUEUE_NAME = "cola1";
-    public static String message;
-    
+    private final static String QUEUE_NAME = "cola_notificaciones";
+
     public RabbitMQConsumerBajoRendimiento() {
     }
-    
-
 
     @Override
     public void run() {
-        
         ConnectionFactory factory = new ConnectionFactory();
         factory.setHost("localhost");
 
         try {
-    com.rabbitmq.client.Connection connection = factory.newConnection();
-    com.rabbitmq.client.Channel channel = connection.createChannel();
+            Connection connection = factory.newConnection();
+            Channel channel = connection.createChannel();
 
-    channel.queueDeclare(QUEUE_NAME, true, false, false, null);
+            channel.queueDeclare(QUEUE_NAME, false, false, false, null);
 
-    Consumer consumer = new DefaultConsumer(channel) {
-        @Override
-        public void handleDelivery(
-                String consumerTag,
-                Envelope envelope,
-                AMQP.BasicProperties properties,
-                byte[] body) throws IOException {
-            
-            try (ByteArrayInputStream bis = new ByteArrayInputStream(body);
-                 ObjectInputStream ois = new ObjectInputStream(bis)) {
+            Consumer consumer = new DefaultConsumer(channel) {
+                @Override
+                public void handleDelivery(
+                        String consumerTag,
+                        Envelope envelope,
+                        AMQP.BasicProperties properties,
+                        byte[] body) throws IOException {
 
-                Mensaje mensaje = (Mensaje) ois.readObject();
-                
-                // Realiza cualquier acción con el mensaje deserializado
-                System.out.println("Mensaje recibido: " + mensaje.toString());
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+                    String tarea = new String(body, "UTF-8");
+                    String destinatario = properties.getHeaders().get("destinatario").toString();
+                    
+                    frmChat.textAreaNotificaciones.append(tarea+"\n");
+                    
+                    System.out.println("Mensaje recibido: " + tarea);
+                    System.out.println("Destinatario: " + destinatario);
+
+                    // Realiza cualquier acción con la tarea y el destinatario
+                    // ...
+
+                }
+            };
+
+            channel.basicConsume(QUEUE_NAME, true, consumer);
+        } catch (IOException | TimeoutException e) {
+            e.printStackTrace();
         }
-    };
-
-    channel.basicConsume(QUEUE_NAME, true, consumer);
-} catch (Exception e) {
-    e.printStackTrace();
-}
-
     }
 }
+
+
