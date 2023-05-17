@@ -31,7 +31,7 @@ public class ControlInformacion {
                     URI.create("ws://localhost:8080/ReportesRegistroEscolar/reportsEndpoint"));
             
             //Conectando al acceso a datos moodle
-            URL url = new URL("http://localhost:8080/AccesoDatosMoodle/webresources/moodleMaestros");
+            URL url = new URL("http://192.168.0.153:8080/AccesoDatosMoodle/webresources/MoodleMaestros");
             HttpURLConnection connector = (HttpURLConnection) url.openConnection();
             connector.setRequestMethod("GET");
             connector.setRequestProperty("Content-Type", "application/json");
